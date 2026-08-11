@@ -7,4 +7,3 @@ This project contains original code. The following MIT-licensed Quasimorph mods 
 - [QM_SortToTabs](https://github.com/NBKRedSpy/QM_SortToTabs), copyright NBK_RedSpy
 
 No binaries or proprietary Quasimorph assets from those projects or the game are distributed in this repository.
-

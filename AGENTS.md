@@ -7,4 +7,3 @@
 - Never remove an equipped item until its desired replacement is known to exist. Use the game's movement/cargo APIs so failed moves leave the source item intact.
 - Keep the first milestone narrow: one persistent `Default` preset, F6 Save, F7 Apply, and clear result reporting on `ArsenalScreen`.
 - Reference implementations may inform API usage, but new code must be original. Record any copied/substantially adapted upstream code and its license in `THIRD_PARTY_NOTICES.md`.
-

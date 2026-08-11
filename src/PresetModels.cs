@@ -31,4 +31,3 @@ namespace QuasimorphLoadouts
         public int Quantity { get; set; }
     }
 }
-
