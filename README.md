@@ -18,6 +18,10 @@ Open the preparation/loadout (Arsenal) screen with a mercenary selected. A fixed
 
 Successful actions use a brief notification. Apply and Normalize open a detailed dialog only when items are missing, locked, or lack inventory space.
 
+### Stack lifting shortcut
+
+In inventory screens, **Shift + left-click a stack** lifts exactly one item. Keep Shift-clicking compatible stacks to add one item per click to the stack already held by the cursor. The held quantity appears below the item in the game's UI font and colour. Placing or cancelling the drag uses the game's normal merge/return paths; ordinary clicking, dragging, and Ctrl transfer behavior are unchanged.
+
 The preset is stored outside the save files at:
 
 `%USERPROFILE%\AppData\LocalLow\Magnum Scriptum Ltd\Quasimorph_ModConfigs\QuasimorphLoadouts\presets.json`
@@ -51,6 +55,8 @@ Restart Quasimorph after installing an assembly. The mod should appear in the ga
 7. Add a miscellaneous item, press F8, and confirm it moves to normal cargo while preset quantities remain.
 8. Quit and relaunch the game, then click the icon again to verify name, icon, selection, and contents persist.
 
+For the stack shortcut, Shift-click a stack of at least three items several times, place the lifted mini-stack elsewhere, then repeat and cancel with right-click. Confirm both the placed and returned totals are exact.
+
 If loading or applying fails, inspect `Player.log` in Quasimorph's LocalLow folder and search for `[QuasimorphLoadouts]`.
 
 ## Deliberate milestone-one rules
@@ -69,7 +75,7 @@ If loading or applying fails, inspect `Player.log` in Quasimorph's LocalLow fold
 
 1. Validate named presets and Normalize against varied real inventories.
 2. Decide whether Apply and Restock should have separate semantics, including optional weapon reload behavior.
-3. Refine the anchored icon strip toward fully native styling after its placement and interaction behavior stabilizes.
+3. Replace the remaining IMGUI controls with fully native UI components after the placement and interaction behavior stabilizes.
 4. Add preset deletion, optional reordering, configuration, Workshop packaging, and polish.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for open-source mods consulted as API/convention references.

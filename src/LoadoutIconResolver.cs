@@ -55,7 +55,13 @@ namespace QuasimorphLoadouts
                 textureRect.y / texture.height,
                 textureRect.width / texture.width,
                 textureRect.height / texture.height);
-            GUI.DrawTextureWithTexCoords(rect, texture, coordinates, alphaBlend: true);
+            float scale = Mathf.Min(rect.width / textureRect.width, rect.height / textureRect.height);
+            Rect destination = new Rect(
+                rect.center.x - textureRect.width * scale / 2f,
+                rect.center.y - textureRect.height * scale / 2f,
+                textureRect.width * scale,
+                textureRect.height * scale);
+            GUI.DrawTextureWithTexCoords(destination, texture, coordinates, alphaBlend: true);
         }
     }
 }

@@ -10,9 +10,13 @@ namespace QuasimorphLoadouts
 {
     internal sealed class LoadoutHotkeyController : MonoBehaviour
     {
-        private const float SlotSize = 52f;
-        private const float SlotGap = 4f;
-        private const float StripHeight = 62f;
+        internal static bool IsModalEditorOpen { get; private set; }
+
+        private const float SlotWidth = 196f;
+        private const float SlotHeight = 94f;
+        private const float AddSlotWidth = 52f;
+        private const float SlotGap = 8f;
+        private const float HeaderOffset = 72f;
         private const int EditorWindowId = 731946;
 
         private static readonly FieldInfo InventoryWindowField =
@@ -104,7 +108,7 @@ namespace QuasimorphLoadouts
 
         private Rect GetPresetStripRect()
         {
-            Rect fallback = new Rect(18f, 106f, Mathf.Min(540f, Screen.width - 36f), StripHeight);
+            Rect fallback = new Rect(18f, 8f, Mathf.Min(1250f, Screen.width - 36f), SlotHeight);
             try
             {
                 GameObject inventoryWindow = InventoryWindowField?.GetValue(_screen) as GameObject;
@@ -128,9 +132,9 @@ namespace QuasimorphLoadouts
                 float width = Mathf.Clamp(right - left, 210f, Screen.width - 8f);
                 return new Rect(
                     Mathf.Clamp(left, 4f, Screen.width - width - 4f),
-                    Mathf.Max(4f, top - StripHeight - 3f),
+                    Mathf.Max(4f, top - SlotHeight - HeaderOffset),
                     width,
-                    StripHeight);
+                    SlotHeight);
             }
             catch (Exception exception)
             {
@@ -141,33 +145,32 @@ namespace QuasimorphLoadouts
 
         private void DrawPresetStrip(Rect stripRect)
         {
-            GUI.Box(stripRect, GUIContent.none);
-            const float padding = 5f;
-            Rect addRect = new Rect(stripRect.xMax - padding - SlotSize, stripRect.y + padding, SlotSize, SlotSize);
-            float presetStart = stripRect.x + padding;
-            float presetEnd = addRect.x - SlotGap;
-            int unpagedCapacity = Math.Max(1, Mathf.FloorToInt((presetEnd - presetStart) / (SlotSize + SlotGap)));
+            const float pagerWidth = 28f;
+            int unpagedCapacity = Math.Max(1, Mathf.FloorToInt(
+                (stripRect.width - AddSlotWidth - SlotGap) / (SlotWidth + SlotGap)));
             bool needsPaging = _presets.Count > unpagedCapacity;
+            float pagingWidth = needsPaging ? (pagerWidth + SlotGap) * 2f : 0f;
+            int capacity = Math.Max(1, Mathf.FloorToInt(
+                (stripRect.width - AddSlotWidth - SlotGap - pagingWidth) / (SlotWidth + SlotGap)));
+            int maximumOffset = Math.Max(0, _presets.Count - capacity);
+            _pageOffset = Mathf.Clamp(_pageOffset, 0, maximumOffset);
+            int visibleCount = Math.Min(capacity, Math.Max(0, _presets.Count - _pageOffset));
+            float groupWidth = visibleCount * SlotWidth
+                + Math.Max(0, visibleCount - 1) * SlotGap
+                + (visibleCount > 0 ? SlotGap : 0f)
+                + AddSlotWidth
+                + pagingWidth;
+            float groupStart = stripRect.center.x - groupWidth / 2f;
+            float presetStart = groupStart + (needsPaging ? pagerWidth + SlotGap : 0f);
 
             if (needsPaging)
             {
-                Rect previousRect = new Rect(presetStart, stripRect.y + padding, 20f, SlotSize);
-                Rect nextRect = new Rect(presetEnd - 20f, stripRect.y + padding, 20f, SlotSize);
+                Rect previousRect = new Rect(groupStart, stripRect.y, pagerWidth, SlotHeight);
                 if (GUI.Button(previousRect, "<"))
                 {
                     _pageOffset = Math.Max(0, _pageOffset - 1);
                 }
-                if (GUI.Button(nextRect, ">"))
-                {
-                    _pageOffset++;
-                }
-                presetStart = previousRect.xMax + SlotGap;
-                presetEnd = nextRect.x - SlotGap;
             }
-
-            int capacity = Math.Max(1, Mathf.FloorToInt((presetEnd - presetStart) / (SlotSize + SlotGap)));
-            int maximumOffset = Math.Max(0, _presets.Count - capacity);
-            _pageOffset = Mathf.Clamp(_pageOffset, 0, maximumOffset);
 
             Vector2 mouse = Event.current.mousePosition;
             string slotUnderMouse = null;
@@ -185,10 +188,10 @@ namespace QuasimorphLoadouts
 
                 LoadoutPreset preset = _presets[presetIndex];
                 Rect slotRect = new Rect(
-                    presetStart + visibleIndex * (SlotSize + SlotGap),
-                    stripRect.y + padding,
-                    SlotSize,
-                    SlotSize);
+                    presetStart + visibleIndex * (SlotWidth + SlotGap),
+                    stripRect.y,
+                    SlotWidth,
+                    SlotHeight);
                 if (string.Equals(preset.Name, _hoveredPresetName, StringComparison.OrdinalIgnoreCase))
                 {
                     existingHoveredRect = slotRect;
@@ -203,9 +206,21 @@ namespace QuasimorphLoadouts
                 DrawPresetSlot(preset, slotRect);
             }
 
-            if (GUI.Button(addRect, new GUIContent("+", "Save current inventory as a new loadout")))
+            float addX = presetStart + visibleCount * (SlotWidth + SlotGap);
+            Rect addRect = new Rect(addX, stripRect.y, AddSlotWidth, SlotHeight);
+            DrawFramedSlot(addRect, selected: false);
+            GUI.Label(addRect, "+", GetCenteredLabelStyle());
+            if (GUI.Button(addRect, new GUIContent(string.Empty, "Save current inventory as a new loadout"), GUIStyle.none))
             {
                 BeginCreateEditor();
+            }
+            if (needsPaging)
+            {
+                Rect nextRect = new Rect(addRect.xMax + SlotGap, stripRect.y, pagerWidth, SlotHeight);
+                if (GUI.Button(nextRect, ">"))
+                {
+                    _pageOffset = Math.Min(maximumOffset, _pageOffset + 1);
+                }
             }
 
             if (slotUnderMouse != null)
@@ -235,18 +250,12 @@ namespace QuasimorphLoadouts
 
         private void DrawPresetSlot(LoadoutPreset preset, Rect rect)
         {
-            Color originalBackground = GUI.backgroundColor;
-            if (string.Equals(preset.Name, _selectedPresetName, StringComparison.OrdinalIgnoreCase))
-            {
-                GUI.backgroundColor = new Color(0.95f, 0.72f, 0.2f, 1f);
-            }
-
-            bool clicked = GUI.Button(rect, GUIContent.none);
-            GUI.backgroundColor = originalBackground;
+            bool selected = string.Equals(preset.Name, _selectedPresetName, StringComparison.OrdinalIgnoreCase);
+            DrawFramedSlot(rect, selected);
             Sprite icon = LoadoutIconResolver.Resolve(GetEffectiveIconItemId(preset));
             if (icon != null)
             {
-                LoadoutIconResolver.Draw(icon, new Rect(rect.x + 5f, rect.y + 5f, rect.width - 10f, rect.height - 10f));
+                LoadoutIconResolver.Draw(icon, new Rect(rect.x + 8f, rect.y + 7f, rect.width - 16f, rect.height - 14f));
             }
             else
             {
@@ -254,10 +263,28 @@ namespace QuasimorphLoadouts
                 GUI.Label(rect, fallback, GetCenteredLabelStyle());
             }
 
+            bool clicked = GUI.Button(rect, GUIContent.none, GUIStyle.none);
             if (clicked)
             {
                 SelectAndApplyPreset(preset.Name);
             }
+        }
+
+        private static void DrawFramedSlot(Rect rect, bool selected)
+        {
+            Color previous = GUI.color;
+            GUI.color = new Color(0.018f, 0.035f, 0.045f, 0.96f);
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+
+            GUI.color = selected
+                ? new Color(1f, 0.93f, 0.08f, 1f)
+                : new Color(0.38f, 0.86f, 0.67f, 1f);
+            const float border = 3f;
+            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, border), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x, rect.yMax - border, rect.width, border), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x, rect.y, border, rect.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.xMax - border, rect.y, border, rect.height), Texture2D.whiteTexture);
+            GUI.color = previous;
         }
 
         private static Rect GetHoverPopupRect(Rect slotRect)
@@ -327,6 +354,7 @@ namespace QuasimorphLoadouts
             _editorRect.x = Mathf.Max(4f, (Screen.width - _editorRect.width) / 2f);
             _editorRect.y = Mathf.Max(4f, (Screen.height - _editorRect.height) / 2f);
             _editorOpen = true;
+            IsModalEditorOpen = true;
         }
 
         private void DrawEditorWindow(int windowId)
@@ -378,6 +406,7 @@ namespace QuasimorphLoadouts
             if (GUI.Button(new Rect(_editorRect.width - 176f, 294f, 78f, 27f), "Cancel"))
             {
                 _editorOpen = false;
+                IsModalEditorOpen = false;
             }
             if (GUI.Button(new Rect(_editorRect.width - 92f, 294f, 80f, 27f), "Save"))
             {
@@ -403,6 +432,7 @@ namespace QuasimorphLoadouts
                 }
 
                 _editorOpen = false;
+                IsModalEditorOpen = false;
                 RefreshPresetCache();
                 Notify("Saved loadout: " + _selectedPresetName);
             }
@@ -624,6 +654,12 @@ namespace QuasimorphLoadouts
             UI.Chain<AlertDialogWindow>()
                 .Invoke(window => window.Configure(text))
                 .Show();
+        }
+
+        private void OnDisable()
+        {
+            _editorOpen = false;
+            IsModalEditorOpen = false;
         }
     }
 }
