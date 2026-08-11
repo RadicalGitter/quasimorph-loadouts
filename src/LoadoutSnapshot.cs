@@ -32,8 +32,18 @@ namespace QuasimorphLoadouts
                 });
             }
 
+            preset.IconItemId = preset.Equipment
+                .Find(item => item.Slot == "PrimaryWeapon" && !string.IsNullOrEmpty(item.ItemId))?.ItemId
+                ?? preset.Equipment.Find(item => item.Slot == "SecondaryWeapon" && !string.IsNullOrEmpty(item.ItemId))?.ItemId
+                ?? preset.Equipment.Find(item => !string.IsNullOrEmpty(item.ItemId))?.ItemId;
+
             preset.Backpack = CaptureQuantities(inventory.BackpackStore);
             preset.Vest = CaptureQuantities(inventory.VestStore);
+            if (string.IsNullOrEmpty(preset.IconItemId))
+            {
+                preset.IconItemId = preset.Backpack.Find(item => !string.IsNullOrEmpty(item.ItemId))?.ItemId
+                    ?? preset.Vest.Find(item => !string.IsNullOrEmpty(item.ItemId))?.ItemId;
+            }
             return preset;
         }
 

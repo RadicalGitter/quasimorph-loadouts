@@ -30,7 +30,9 @@ $requiredReferences = @(
     "UnityEngine.dll",
     "UnityEngine.CoreModule.dll",
     "UnityEngine.InputLegacyModule.dll",
-    "UnityEngine.IMGUIModule.dll"
+    "UnityEngine.IMGUIModule.dll",
+    "UnityEngine.UIModule.dll",
+    "UnityEngine.TextRenderingModule.dll"
 )
 
 foreach ($reference in $requiredReferences) {

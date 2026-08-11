@@ -4,7 +4,7 @@ namespace QuasimorphLoadouts
 {
     public sealed class PresetFile
     {
-        public int SchemaVersion { get; set; } = 2;
+        public int SchemaVersion { get; set; } = 3;
         public string ActivePreset { get; set; } = "Default";
         public List<LoadoutPreset> Presets { get; set; } = new List<LoadoutPreset>();
     }
@@ -12,6 +12,7 @@ namespace QuasimorphLoadouts
     public sealed class LoadoutPreset
     {
         public string Name { get; set; } = "Default";
+        public string IconItemId { get; set; }
         public string GameVersion { get; set; }
         public string SavedAtUtc { get; set; }
         public List<EquipmentPreset> Equipment { get; set; } = new List<EquipmentPreset>();

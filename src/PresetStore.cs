@@ -46,6 +46,13 @@ namespace QuasimorphLoadouts
                 .ToList();
         }
 
+        internal static List<LoadoutPreset> GetPresets()
+        {
+            return LoadFileOrNew().Presets
+                .OrderBy(preset => preset.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         internal static string GetActivePresetName()
         {
             PresetFile file = LoadFileOrNew();
@@ -67,6 +74,32 @@ namespace QuasimorphLoadouts
             SaveFile(file);
         }
 
+        internal static void UpdateMetadata(string originalName, string newName, string iconItemId)
+        {
+            originalName = ValidateName(originalName);
+            newName = ValidateName(newName);
+            PresetFile file = LoadFileOrNew();
+            LoadoutPreset preset = file.Presets.FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, originalName, StringComparison.OrdinalIgnoreCase));
+            if (preset == null)
+            {
+                throw new InvalidOperationException($"Loadout '{originalName}' no longer exists.");
+            }
+
+            bool renamed = !string.Equals(originalName, newName, StringComparison.OrdinalIgnoreCase);
+            if (renamed && file.Presets.Any(candidate =>
+                    string.Equals(candidate.Name, newName, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException($"A loadout named '{newName}' already exists.");
+            }
+
+            preset.Name = newName;
+            preset.IconItemId = string.IsNullOrWhiteSpace(iconItemId) ? null : iconItemId;
+            file.ActivePreset = newName;
+            file.Presets = file.Presets.OrderBy(candidate => candidate.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            SaveFile(file);
+        }
+
         private static PresetFile LoadFileOrNew()
         {
             if (!File.Exists(PresetPath))
@@ -75,14 +108,14 @@ namespace QuasimorphLoadouts
             }
 
             PresetFile file = JsonConvert.DeserializeObject<PresetFile>(File.ReadAllText(PresetPath));
-            if (file == null || file.SchemaVersion < 1 || file.SchemaVersion > 2)
+            if (file == null || file.SchemaVersion < 1 || file.SchemaVersion > 3)
             {
                 throw new InvalidDataException("Unsupported or empty loadout preset file.");
             }
 
-            // Schema 1 stored aggregate quantities without position hints. Missing nullable
-            // coordinates deserialize cleanly, so migration is intentionally lossless.
-            file.SchemaVersion = 2;
+            // Older schemas omit nullable coordinates and/or the icon item ID. Those fields
+            // deserialize cleanly, so migration is intentionally lossless.
+            file.SchemaVersion = 3;
 
             if (file.Presets == null)
             {

@@ -5,5 +5,5 @@
 - Prefer desired-state loadouts. Item provenance is not stable across stacking, consumption, repairs, and missions.
 - Preserve item objects and their metadata when moving whole items. Treat splitting metadata-bearing stacks cautiously.
 - Never remove an equipped item until its desired replacement is known to exist. Use the game's movement/cargo APIs so failed moves leave the source item intact.
-- Preserve the proven F6 Save/F7 Apply flow. Current UX also supports named presets, F5 cycling, F8 Normalize, and a draggable `ArsenalScreen` panel.
+- Preserve the proven Apply/Normalize inventory behavior. Current UX uses an `ArsenalScreen` icon strip anchored above the character inventory, hover management actions, a name/icon editor, F5 cycling, F6 replace, F7 apply, and F8 Normalize.
 - Reference implementations may inform API usage, but new code must be original. Record any copied/substantially adapted upstream code and its license in `THIRD_PARTY_NOTICES.md`.
