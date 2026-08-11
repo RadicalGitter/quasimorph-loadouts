@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>QuasimorphLoadouts</AssemblyName>
     <RootNamespace>QuasimorphLoadouts</RootNamespace>
-    <Version>0.4.1</Version>
+    <Version>0.4.2</Version>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GamePath Condition="'$(GamePath)' == '' and '$(QUASIMORPH_GAME_PATH)' != ''">$(QUASIMORPH_GAME_PATH)</GamePath>
     <ManagedPath>$(GamePath)\Quasimorph_Data\Managed</ManagedPath>

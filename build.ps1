@@ -97,9 +97,12 @@ if ($Install) {
 
     if ($runningGame -and (Test-Path -LiteralPath $installedDll)) {
         $loadedDll = Join-Path $installRoot ("QuasimorphLoadouts.loaded.{0}.dll" -f $runningGame.Id)
-        if (-not (Test-Path -LiteralPath $loadedDll)) {
-            Move-Item -LiteralPath $installedDll -Destination $loadedDll
+        $collision = 0
+        while (Test-Path -LiteralPath $loadedDll) {
+            $collision++
+            $loadedDll = Join-Path $installRoot ("QuasimorphLoadouts.loaded.{0}.{1}.dll" -f $runningGame.Id, $collision)
         }
+        Move-Item -LiteralPath $installedDll -Destination $loadedDll
         Copy-Item -LiteralPath $outputDll -Destination $installedDll -Force
         Write-Warning "Quasimorph is running. Version $([Reflection.AssemblyName]::GetAssemblyName($outputDll).Version) is staged and will load after the game restarts."
     }

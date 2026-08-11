@@ -14,7 +14,7 @@ namespace QuasimorphLoadouts
 
         private const float SlotWidth = 196f;
         private const float SlotHeight = 94f;
-        private const float AddSlotWidth = 52f;
+        private const float AddSlotWidth = SlotHeight;
         private const float SlotGap = 8f;
         private const float HeaderOffset = 72f;
         private const int EditorWindowId = 731946;
@@ -209,7 +209,7 @@ namespace QuasimorphLoadouts
             float addX = presetStart + visibleCount * (SlotWidth + SlotGap);
             Rect addRect = new Rect(addX, stripRect.y, AddSlotWidth, SlotHeight);
             DrawFramedSlot(addRect, selected: false);
-            GUI.Label(addRect, "+", GetCenteredLabelStyle());
+            GUI.Label(addRect, "+", GetAddLabelStyle());
             if (GUI.Button(addRect, new GUIContent(string.Empty, "Save current inventory as a new loadout"), GUIStyle.none))
             {
                 BeginCreateEditor();
@@ -590,6 +590,14 @@ namespace QuasimorphLoadouts
                 alignment = TextAnchor.MiddleCenter,
                 clipping = TextClipping.Clip
             };
+            return style;
+        }
+
+        private static GUIStyle GetAddLabelStyle()
+        {
+            GUIStyle style = GetCenteredLabelStyle();
+            style.fontSize = 36;
+            style.fontStyle = FontStyle.Normal;
             return style;
         }
 
