@@ -4,7 +4,7 @@ namespace QuasimorphLoadouts
 {
     public sealed class PresetFile
     {
-        public int SchemaVersion { get; set; } = 1;
+        public int SchemaVersion { get; set; } = 2;
         public string ActivePreset { get; set; } = "Default";
         public List<LoadoutPreset> Presets { get; set; } = new List<LoadoutPreset>();
     }
@@ -29,5 +29,7 @@ namespace QuasimorphLoadouts
     {
         public string ItemId { get; set; }
         public int Quantity { get; set; }
+        public int? PreferredX { get; set; }
+        public int? PreferredY { get; set; }
     }
 }

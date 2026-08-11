@@ -9,10 +9,7 @@ namespace QuasimorphLoadouts
     {
         internal static OperationResult Apply(LoadoutPreset preset, Mercenary mercenary, MagnumCargo cargo, SpaceTime spaceTime)
         {
-            if (preset == null) throw new ArgumentNullException(nameof(preset));
-            if (mercenary?.CreatureData?.Inventory == null) throw new ArgumentException("No mercenary inventory is available.", nameof(mercenary));
-            if (cargo == null) throw new ArgumentNullException(nameof(cargo));
-            if (spaceTime == null) throw new ArgumentNullException(nameof(spaceTime));
+            ValidateArguments(preset, mercenary, cargo, spaceTime);
 
             OperationResult result = new OperationResult();
             Inventory inventory = mercenary.CreatureData.Inventory;
@@ -21,6 +18,30 @@ namespace QuasimorphLoadouts
             ApplyContents("backpack", preset.Backpack, inventory.BackpackStore, cargo, spaceTime, result);
             ApplyContents("vest", preset.Vest, inventory.VestStore, cargo, spaceTime, result);
             return result;
+        }
+
+        internal static OperationResult Normalize(LoadoutPreset preset, Mercenary mercenary, MagnumCargo cargo, SpaceTime spaceTime)
+        {
+            ValidateArguments(preset, mercenary, cargo, spaceTime);
+
+            OperationResult result = new OperationResult();
+            Inventory inventory = mercenary.CreatureData.Inventory;
+
+            // Equipment first because changing a backpack or vest can change container shape.
+            ApplyEquipment(preset, inventory, cargo, spaceTime, result);
+            NormalizeContents("backpack", preset.Backpack, inventory.BackpackStore, cargo, spaceTime, result);
+            NormalizeContents("vest", preset.Vest, inventory.VestStore, cargo, spaceTime, result);
+            ApplyContents("backpack", preset.Backpack, inventory.BackpackStore, cargo, spaceTime, result);
+            ApplyContents("vest", preset.Vest, inventory.VestStore, cargo, spaceTime, result);
+            return result;
+        }
+
+        private static void ValidateArguments(LoadoutPreset preset, Mercenary mercenary, MagnumCargo cargo, SpaceTime spaceTime)
+        {
+            if (preset == null) throw new ArgumentNullException(nameof(preset));
+            if (mercenary?.CreatureData?.Inventory == null) throw new ArgumentException("No mercenary inventory is available.", nameof(mercenary));
+            if (cargo == null) throw new ArgumentNullException(nameof(cargo));
+            if (spaceTime == null) throw new ArgumentNullException(nameof(spaceTime));
         }
 
         private static void ApplyEquipment(
@@ -118,30 +139,102 @@ namespace QuasimorphLoadouts
                 return;
             }
 
-            foreach (ItemQuantityPreset desired in desiredItems ?? new List<ItemQuantityPreset>())
-            {
-                if (string.IsNullOrEmpty(desired.ItemId) || desired.Quantity <= 0)
-                {
-                    continue;
-                }
+            IEnumerable<IGrouping<string, ItemQuantityPreset>> desiredGroups =
+                (desiredItems ?? new List<ItemQuantityPreset>())
+                .Where(item => !string.IsNullOrEmpty(item.ItemId) && item.Quantity > 0)
+                .GroupBy(item => item.ItemId, StringComparer.Ordinal);
 
-                int before = target.CountItems(desired.ItemId);
-                int needed = Math.Max(0, desired.Quantity - before);
+            foreach (IGrouping<string, ItemQuantityPreset> desiredGroup in desiredGroups)
+            {
+                string itemId = desiredGroup.Key;
+                int desiredQuantity = desiredGroup.Sum(item => item.Quantity);
+                List<ItemQuantityPreset> placements = desiredGroup.ToList();
+
+                int before = target.CountItems(itemId);
+                int needed = Math.Max(0, desiredQuantity - before);
                 if (needed == 0)
                 {
                     continue;
                 }
 
-                TransferQuantity(desired.ItemId, needed, target, cargo, spaceTime);
-                int moved = Math.Max(0, target.CountItems(desired.ItemId) - before);
+                TransferQuantity(itemId, needed, placements, target, cargo, spaceTime);
+                int moved = Math.Max(0, target.CountItems(itemId) - before);
                 result.QuantityMoved += moved;
 
-                int remaining = Math.Max(0, desired.Quantity - target.CountItems(desired.ItemId));
+                int remaining = Math.Max(0, desiredQuantity - target.CountItems(itemId));
                 if (remaining > 0)
                 {
-                    int available = CountCargo(cargo, desired.ItemId);
+                    int available = CountCargo(cargo, itemId);
                     string reason = available == 0 ? "missing from cargo" : $"not enough {containerName} space ({available} still in cargo)";
-                    result.Problems.Add($"{remaining}× {ItemName(desired.ItemId)}: {reason}");
+                    result.Problems.Add($"{remaining}× {ItemName(itemId)}: {reason}");
+                }
+            }
+        }
+
+        private static void NormalizeContents(
+            string containerName,
+            List<ItemQuantityPreset> desiredItems,
+            ItemStorage target,
+            MagnumCargo cargo,
+            SpaceTime spaceTime,
+            OperationResult result)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            Dictionary<string, int> desiredCounts = (desiredItems ?? new List<ItemQuantityPreset>())
+                .Where(item => !string.IsNullOrEmpty(item.ItemId) && item.Quantity > 0)
+                .GroupBy(item => item.ItemId, StringComparer.Ordinal)
+                .ToDictionary(group => group.Key, group => group.Sum(item => item.Quantity), StringComparer.Ordinal);
+            Dictionary<string, int> keptCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+
+            foreach (BasePickupItem item in target.Items.ToList())
+            {
+                int desiredCount;
+                desiredCounts.TryGetValue(item.Id, out desiredCount);
+                int alreadyKept;
+                keptCounts.TryGetValue(item.Id, out alreadyKept);
+                int keepCount = Math.Min(item.StackCount, Math.Max(0, desiredCount - alreadyKept));
+                int excessCount = item.StackCount - keepCount;
+
+                if (excessCount == 0)
+                {
+                    keptCounts[item.Id] = alreadyKept + item.StackCount;
+                    continue;
+                }
+
+                if (item.Locked)
+                {
+                    keptCounts[item.Id] = alreadyKept + item.StackCount;
+                    result.Problems.Add($"Locked {ItemName(item.Id)} could not be unloaded from {containerName}");
+                    continue;
+                }
+
+                if (keepCount == 0)
+                {
+                    short quantity = item.StackCount;
+                    if (ReturnToCargo(item, cargo, spaceTime))
+                    {
+                        result.QuantityUnloaded += quantity;
+                    }
+                    else
+                    {
+                        result.Problems.Add($"Could not safely unload {ItemName(item.Id)} from {containerName}");
+                    }
+                    continue;
+                }
+
+                if (SplitExcessToCargo(item, (short)excessCount, cargo, spaceTime))
+                {
+                    result.QuantityUnloaded += excessCount;
+                    keptCounts[item.Id] = alreadyKept + keepCount;
+                }
+                else
+                {
+                    keptCounts[item.Id] = alreadyKept + item.StackCount;
+                    result.Problems.Add($"Could not safely split excess {ItemName(item.Id)} in {containerName}");
                 }
             }
         }
@@ -149,6 +242,7 @@ namespace QuasimorphLoadouts
         private static void TransferQuantity(
             string itemId,
             int requested,
+            List<ItemQuantityPreset> placements,
             ItemStorage target,
             MagnumCargo cargo,
             SpaceTime spaceTime)
@@ -165,11 +259,11 @@ namespace QuasimorphLoadouts
                 int before = target.CountItems(itemId);
                 if (source.StackCount <= remaining)
                 {
-                    AddItemToStorage(source, target, spaceTime);
+                    AddItemToStorage(source, placements, target, spaceTime);
                 }
                 else
                 {
-                    SplitAndAdd(source, remaining, target, cargo, spaceTime);
+                    SplitAndAdd(source, remaining, placements, target, cargo, spaceTime);
                 }
 
                 int moved = Math.Max(0, target.CountItems(itemId) - before);
@@ -184,6 +278,7 @@ namespace QuasimorphLoadouts
         private static void SplitAndAdd(
             BasePickupItem source,
             int requested,
+            List<ItemQuantityPreset> placements,
             ItemStorage target,
             MagnumCargo cargo,
             SpaceTime spaceTime)
@@ -208,7 +303,7 @@ namespace QuasimorphLoadouts
             ItemInteractionSystem.TrySplitUsable(source, split);
 
             int before = target.CountItems(source.Id);
-            AddItemToStorage(split, target, spaceTime);
+            AddItemToStorage(split, placements, target, spaceTime);
             int accepted = Math.Max(0, target.CountItems(source.Id) - before);
             if (accepted < splitCount && split.StackCount > 0 && split.Storage == null)
             {
@@ -216,7 +311,11 @@ namespace QuasimorphLoadouts
             }
         }
 
-        private static void AddItemToStorage(BasePickupItem item, ItemStorage target, SpaceTime spaceTime)
+        private static void AddItemToStorage(
+            BasePickupItem item,
+            List<ItemQuantityPreset> placements,
+            ItemStorage target,
+            SpaceTime spaceTime)
         {
             if (item == null)
             {
@@ -227,8 +326,52 @@ namespace QuasimorphLoadouts
             ItemInteractionSystem.TryMergeIntoStorage(target, item, spaceTime, out emptyAfterMerge);
             if (!emptyAfterMerge && item.StackCount > 0)
             {
-                target.TryPutItem(item, CellPosition.Zero);
+                bool placed = false;
+                foreach (ItemQuantityPreset placement in placements ?? new List<ItemQuantityPreset>())
+                {
+                    if (placement.PreferredX.HasValue && placement.PreferredY.HasValue &&
+                        target.TryPutItem(
+                            item,
+                            new CellPosition(placement.PreferredX.Value, placement.PreferredY.Value),
+                            hasSpecialPos: true))
+                    {
+                        placed = true;
+                        break;
+                    }
+                }
+
+                if (!placed)
+                {
+                    target.TryPutItem(item, CellPosition.Zero);
+                }
             }
+        }
+
+        private static bool SplitExcessToCargo(
+            BasePickupItem source,
+            short excessCount,
+            MagnumCargo cargo,
+            SpaceTime spaceTime)
+        {
+            if (source == null || source.Storage == null || excessCount <= 0 || excessCount >= source.StackCount)
+            {
+                return false;
+            }
+
+            BasePickupItem split = SingletonMonoBehaviour<ItemFactory>.Instance.CreateForInventory(source.Id);
+            if (split == null)
+            {
+                return false;
+            }
+
+            int cargoBefore = CountCargo(cargo, source.Id);
+            source.StackCount -= excessCount;
+            split.StackCount = excessCount;
+            split.ExaminedItem = source.ExaminedItem;
+            split.CopyExpireTime(source);
+            ItemInteractionSystem.TrySplitUsable(source, split);
+            MagnumCargoSystem.AddCargo(cargo, spaceTime, split, cargo.ShipCargo[0], splittedItem: true);
+            return CountCargo(cargo, source.Id) >= cargoBefore + excessCount;
         }
 
         private static bool ReturnToCargo(BasePickupItem item, MagnumCargo cargo, SpaceTime spaceTime)
@@ -238,9 +381,10 @@ namespace QuasimorphLoadouts
                 return false;
             }
 
-            ItemStorage original = item.Storage;
+            int cargoBefore = CountCargo(cargo, item.Id);
+            short quantity = item.StackCount;
             MagnumCargoSystem.AddCargo(cargo, spaceTime, item, cargo.ShipCargo[0]);
-            return item.Storage != null && item.Storage != original && IsCargoStorage(cargo, item.Storage);
+            return CountCargo(cargo, item.Id) >= cargoBefore + quantity;
         }
 
         private static BasePickupItem FindBestCargoItem(MagnumCargo cargo, string itemId)
@@ -274,11 +418,6 @@ namespace QuasimorphLoadouts
             {
                 yield return cargo.FridgeStorage;
             }
-        }
-
-        private static bool IsCargoStorage(MagnumCargo cargo, ItemStorage storage)
-        {
-            return cargo.ShipCargo.Contains(storage) || storage == cargo.FridgeStorage;
         }
 
         private static string ItemName(string itemId)

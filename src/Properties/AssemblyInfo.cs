@@ -5,6 +5,6 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyDescription("Saved loadout presets and inventory normalization for Quasimorph")]
 [assembly: AssemblyCompany("radicalgitter")]
 [assembly: AssemblyProduct("Quasimorph Loadouts")]
-[assembly: AssemblyVersion("0.1.0.0")]
-[assembly: AssemblyFileVersion("0.1.0.0")]
+[assembly: AssemblyVersion("0.2.0.0")]
+[assembly: AssemblyFileVersion("0.2.0.0")]
 [assembly: ComVisible(false)]

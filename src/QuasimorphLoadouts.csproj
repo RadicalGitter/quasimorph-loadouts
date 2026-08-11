@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>QuasimorphLoadouts</AssemblyName>
     <RootNamespace>QuasimorphLoadouts</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GamePath Condition="'$(GamePath)' == '' and '$(QUASIMORPH_GAME_PATH)' != ''">$(QUASIMORPH_GAME_PATH)</GamePath>
     <ManagedPath>$(GamePath)\Quasimorph_Data\Managed</ManagedPath>
@@ -44,6 +44,10 @@
     </Reference>
     <Reference Include="UnityEngine.InputLegacyModule">
       <HintPath>$(ManagedPath)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(ManagedPath)\UnityEngine.IMGUIModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

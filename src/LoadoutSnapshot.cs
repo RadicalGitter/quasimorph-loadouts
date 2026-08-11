@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using MGSC;
 using UnityEngine;
 
@@ -45,16 +44,29 @@ namespace QuasimorphLoadouts
                 return new List<ItemQuantityPreset>();
             }
 
-            return storage.Items
-                .Where(item => item != null && !string.IsNullOrEmpty(item.Id))
-                .GroupBy(item => item.Id, StringComparer.Ordinal)
-                .Select(group => new ItemQuantityPreset
+            List<ItemQuantityPreset> result = new List<ItemQuantityPreset>();
+            foreach (BasePickupItem item in storage.Items)
+            {
+                if (item == null || string.IsNullOrEmpty(item.Id))
                 {
-                    ItemId = group.Key,
-                    Quantity = group.Sum(item => (int)item.StackCount)
-                })
-                .OrderBy(item => item.ItemId, StringComparer.Ordinal)
-                .ToList();
+                    continue;
+                }
+
+                result.Add(new ItemQuantityPreset
+                {
+                    ItemId = item.Id,
+                    Quantity = item.StackCount,
+                    PreferredX = item.InventoryPos.X,
+                    PreferredY = item.InventoryPos.Y
+                });
+            }
+
+            result.Sort((left, right) =>
+            {
+                int byRow = Nullable.Compare(left.PreferredY, right.PreferredY);
+                return byRow != 0 ? byRow : Nullable.Compare(left.PreferredX, right.PreferredX);
+            });
+            return result;
         }
     }
 }

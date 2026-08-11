@@ -29,7 +29,8 @@ $requiredReferences = @(
     "netstandard.dll",
     "UnityEngine.dll",
     "UnityEngine.CoreModule.dll",
-    "UnityEngine.InputLegacyModule.dll"
+    "UnityEngine.InputLegacyModule.dll",
+    "UnityEngine.IMGUIModule.dll"
 )
 
 foreach ($reference in $requiredReferences) {
@@ -87,7 +88,22 @@ if ($Install) {
     $localLow = [System.IO.Path]::GetFullPath((Join-Path $localLow "..\LocalLow"))
     $installRoot = Join-Path $localLow "Magnum Scriptum Ltd\Quasimorph\LocalUserPresets\QuasimorphLoadouts"
     New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
-    Copy-Item -LiteralPath $outputDll -Destination $installRoot -Force
+    $installedDll = Join-Path $installRoot "QuasimorphLoadouts.dll"
+    $runningGame = Get-Process -Name "Quasimorph" -ErrorAction SilentlyContinue | Select-Object -First 1
+
+    if ($runningGame -and (Test-Path -LiteralPath $installedDll)) {
+        $loadedDll = Join-Path $installRoot ("QuasimorphLoadouts.loaded.{0}.dll" -f $runningGame.Id)
+        if (-not (Test-Path -LiteralPath $loadedDll)) {
+            Move-Item -LiteralPath $installedDll -Destination $loadedDll
+        }
+        Copy-Item -LiteralPath $outputDll -Destination $installedDll -Force
+        Write-Warning "Quasimorph is running. Version $([Reflection.AssemblyName]::GetAssemblyName($outputDll).Version) is staged and will load after the game restarts."
+    }
+    else {
+        Copy-Item -LiteralPath $outputDll -Destination $installedDll -Force
+        Get-ChildItem -LiteralPath $installRoot -Filter "QuasimorphLoadouts.loaded.*.dll" -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force
+    }
     Copy-Item -LiteralPath (Join-Path $projectRoot "modmanifest.json") -Destination $installRoot -Force
     Write-Host "Installed to $installRoot"
 }

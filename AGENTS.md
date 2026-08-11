@@ -5,5 +5,5 @@
 - Prefer desired-state loadouts. Item provenance is not stable across stacking, consumption, repairs, and missions.
 - Preserve item objects and their metadata when moving whole items. Treat splitting metadata-bearing stacks cautiously.
 - Never remove an equipped item until its desired replacement is known to exist. Use the game's movement/cargo APIs so failed moves leave the source item intact.
-- Keep the first milestone narrow: one persistent `Default` preset, F6 Save, F7 Apply, and clear result reporting on `ArsenalScreen`.
+- Preserve the proven F6 Save/F7 Apply flow. Current UX also supports named presets, F5 cycling, F8 Normalize, and a draggable `ArsenalScreen` panel.
 - Reference implementations may inform API usage, but new code must be original. Record any copied/substantially adapted upstream code and its license in `THIRD_PARTY_NOTICES.md`.

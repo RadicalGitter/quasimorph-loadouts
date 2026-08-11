@@ -7,11 +7,12 @@ namespace QuasimorphLoadouts
     {
         internal int EquipmentChanged { get; set; }
         internal int QuantityMoved { get; set; }
+        internal int QuantityUnloaded { get; set; }
         internal List<string> Problems { get; } = new List<string>();
 
         internal string ToDisplayText()
         {
-            string summary = $"Loadout applied: {EquipmentChanged} equipment change(s), {QuantityMoved} item(s) moved.";
+            string summary = $"Loadout applied: {EquipmentChanged} equipment change(s), {QuantityUnloaded} item(s) unloaded, {QuantityMoved} item(s) added.";
             if (Problems.Count == 0)
             {
                 return summary + "\n\nEverything in the preset was available.";
