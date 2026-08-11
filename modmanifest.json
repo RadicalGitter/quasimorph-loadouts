@@ -1,0 +1,12 @@
+{
+  "UniqueModName": "RadicalGitter_QuasimorphLoadouts",
+  "Assemblies": [
+    "QuasimorphLoadouts.dll"
+  ],
+  "Dependencies": [],
+  "SteamTags": [
+    "Quality of Life",
+    "1.0"
+  ]
+}
+

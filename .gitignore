@@ -1,0 +1,15 @@
+artifacts/
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.pdb
+
+# Quasimorph and third-party binaries are local build inputs only.
+*.dll
+GameReferences/
+
+# Local developer settings.
+*.local.ps1
+
